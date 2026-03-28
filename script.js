@@ -4,25 +4,37 @@ var display = document.getElementById('result');
 
 btn.addEventListener('click', function () {
 
-    var user = input.value;
+    var user = input.value.trim();
 
     if (user === "") {
         alert("Please enter a username!");
         return;
-    }
-
-    // showing loading...
+    } 
+// Loading state
     display.innerHTML = "<p>Loading profile...</p>";
 
     fetch("https://api.github.com/users/" + user)
         .then(function (response) {
-            if (response.ok) {
-                return response.json();
-            } else {
-                throw new Error("User not found");
-            }
+            return response.json().then(function (data) {
+                return { status: response.status, data: data };
+            });
         })
-        .then(function (data) {
+        .then(function (res) {
+
+            // ❌ User not found
+            if (res.status === 404) {
+                display.innerHTML = "<p class='error-msg'>User not found. Try again.</p>";
+                return;
+            }
+
+            // ❌ API limit / other errors
+            if (res.status !== 200) {
+                display.innerHTML = `<p class='error-msg'>${res.data.message}</p>`;
+                return;
+            }
+
+            // ✅ Success
+            var data = res.data;
 
             var profileHtml = `
             <div class="user-details">
@@ -48,11 +60,21 @@ btn.addEventListener('click', function () {
 
                 <a href="${data.html_url}" target="_blank" class="link-btn">View Profile</a>
             </div>
-        `;
+            `;
 
             display.innerHTML = profileHtml;
         })
         .catch(function (error) {
-            display.innerHTML = "<p class='error-msg'>User not found. Try again.</p>";
+            console.error(error);
+            display.innerHTML = "<p class='error-msg'>Network error. Please check your internet.</p>";
         });
 });
+
+
+// 🔥 BONUS: Press Enter to search
+input.addEventListener("keypress", function (e) {
+    if (e.key === "Enter") {
+        btn.click();
+    }
+});
+
